@@ -502,7 +502,17 @@ const HomeScreen = ({ navigation }) => {
                             <Text style={styles.alertTitle}>🚖 New Ride Request</Text>
                             <Text style={styles.alertDetail}>👤 User: {RideRequest?.name}</Text>
                             <Text style={styles.alertDetail}>📍 Pickup: {RideRequest?.pickupLocation?.address}</Text>
+                            {(RideRequest?.stops || []).map((stop, index) => (
+                                <Text key={`stop-${index}`} style={styles.alertDetail} numberOfLines={2}>
+                                    🔸 Stop {index + 1}: {stop.address}
+                                </Text>
+                            ))}
                             <Text style={styles.alertDetail}>🏁 Drop: {RideRequest?.dropoffLocation?.address}</Text>
+                            {RideRequest?.stops?.length > 0 && (
+                                <Text style={[styles.alertDetail, { fontWeight: 'bold' }]}>
+                                    🛑 {RideRequest.stops.length} {RideRequest.stops.length === 1 ? 'stop' : 'stops'} on this ride
+                                </Text>
+                            )}
                             <Text style={styles.alertDetail}>
                             📏 Distance: {RideRequest?.distance_miles ?? 0} Miles
                             </Text>

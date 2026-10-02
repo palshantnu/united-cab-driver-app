@@ -128,6 +128,15 @@ const HistoryScreenWithBack = ({ navigation }) => {
                 <Text style={styles.locationText}>{item.pickup_address}</Text>
             </View>
             <View style={styles.separatorLine} />
+            {(item.stops || []).map((stop, index) => (
+                <React.Fragment key={`stop-${index}`}>
+                    <View style={styles.locationRow}>
+                        <Ionicons name="ellipse-outline" size={18} color="#f59e0b" />
+                        <Text style={styles.locationText} numberOfLines={1}>Stop {index + 1}: {stop.address}</Text>
+                    </View>
+                    <View style={styles.separatorLine} />
+                </React.Fragment>
+            ))}
             <View style={styles.locationRow}>
                 <Ionicons name="navigate-outline" size={18} color={Color.apptheme} />
                 <Text style={styles.locationText}>{item.dropoff_address}</Text>

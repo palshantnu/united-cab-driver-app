@@ -51,6 +51,15 @@ const BookingDetailsScreen = () => {
                     </View>
                     {/* Separator */}
                     <View style={styles.separator} />
+                    {(booking.stops || []).map((stop, index) => (
+                        <React.Fragment key={`stop-${index}`}>
+                            <View style={styles.locationRow}>
+                                <Ionicons name="ellipse-outline" size={20} color="#f59e0b" />
+                                <Text style={styles.locationText}>Stop {index + 1}: {stop.address}</Text>
+                            </View>
+                            <View style={styles.separator} />
+                        </React.Fragment>
+                    ))}
                     {/* Dropoff Address */}
                     <View style={styles.locationRow}>
                         <Ionicons name="navigate-outline" size={20} color={Color.apptheme} />

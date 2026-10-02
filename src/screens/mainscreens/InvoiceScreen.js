@@ -130,6 +130,14 @@ const InvoiceScreen = ({ route, navigation }) => {
                         <Text style={styles.value}>{data?.pickup_address}</Text>
                     </View>
 
+                    {(data?.stops || []).map((stop, index) => (
+                      <View style={styles.rowVertical} key={`stop-${index}`}>
+                        <Icon name="ellipse-outline" size={20} color="#f59e0b" />
+                        <Text style={styles.label}>Stop {index + 1}</Text>
+                        <Text style={styles.value}>{stop.address}</Text>
+                      </View>
+                    ))}
+
                     <View style={styles.rowVertical}>
                         <Icon name="flag-outline" size={20} color="#f44336" />
                         <Text style={styles.label}>Drop-off</Text>

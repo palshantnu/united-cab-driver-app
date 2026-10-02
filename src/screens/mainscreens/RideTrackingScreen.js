@@ -51,6 +51,25 @@ const RideTrackingScreen = ({ route, navigation }) => {
     const dropoffLat = parseCoordinate(rideData.dropoff_lat);
     const dropoffLng = parseCoordinate(rideData.dropoff_lng);
 
+    // Stops are visited in order: pickup → stop 1 → … → drop
+    const [stops, setStops] = useState(rideData.stops || []);
+    const [updatingStop, setUpdatingStop] = useState(false);
+    const nextStopIndex = stops.findIndex(stop => stop.status !== 'completed');
+    const nextStop = nextStopIndex !== -1 ? stops[nextStopIndex] : null;
+    const nextTarget = nextStop
+        ? {
+            latitude: parseCoordinate(nextStop.lat),
+            longitude: parseCoordinate(nextStop.lng),
+            label: `Stop ${nextStopIndex + 1}`,
+            address: nextStop.address,
+        }
+        : {
+            latitude: dropoffLat,
+            longitude: dropoffLng,
+            label: 'Drop-off',
+            address: rideData.dropoff_address,
+        };
+
     const [driverLocation, setDriverLocation] = useState(null);
     const watchId = useRef(null);
     const [showOTPModal, setShowOTPModal] = useState(false);
@@ -104,9 +123,9 @@ const RideTrackingScreen = ({ route, navigation }) => {
             // Condition to determine destination
             if (rideStatus?.status === 'arrived' || rideData.status === 'arrived' ||
                 rideStatus?.status === 'started' || rideData.status === 'started') {
-                // After arrival or during ride, navigate to drop-off
-                targetLocation = { latitude: dropoffLat, longitude: dropoffLng };
-                locationName = rideData.dropoff_address || 'Destination';
+                // After arrival or during ride, navigate to the next stop (or drop-off)
+                targetLocation = { latitude: nextTarget.latitude, longitude: nextTarget.longitude };
+                locationName = nextTarget.address || nextTarget.label;
             } else {
                 // Before arrival, navigate to pickup
                 targetLocation = { latitude: pickupLat, longitude: pickupLng };
@@ -203,7 +222,7 @@ const RideTrackingScreen = ({ route, navigation }) => {
         if (rideStatus?.status === 'arrived' || rideData.status === 'arrived' ||
             rideStatus?.status === 'started' || rideData.status === 'started') {
             return {
-                text: 'Navigate to Drop-off',
+                text: `Navigate to ${nextTarget.label}`,
                 icon: 'location-on',
                 subText: 'Go to passenger destination',
                 iconColor: '#34C759',
@@ -343,11 +362,15 @@ const RideTrackingScreen = ({ route, navigation }) => {
 
     useEffect(() => {
         const rideId = rideData.id;
+        socket.emit('joinRideRoom', { rideId, userType: 2, userId: user.id });
         socket.emit('getRideStatusFromServer', { rideId });
 
         const handleRideStatusUpdate = updateData => {
             console.log('🔄 Real-time ride status update ===>:', updateData.status.status);
             setRideStatus(updateData.status);
+            if (Array.isArray(updateData.status?.stops)) {
+                setStops(updateData.status.stops);
+            }
             if (updateData.status.status === 'completed' || updateData.status.status == 'cancelled') {
                 navigation.replace('BottomTabNavigator');
             }
@@ -382,6 +405,27 @@ const RideTrackingScreen = ({ route, navigation }) => {
         } else {
             setModalMessage(res.error || 'Failed to update status');
             setModalVisible(true);
+        }
+    };
+
+    const updateStopStatus = async (status, stopIndex) => {
+        if (updatingStop) return;
+        setUpdatingStop(true);
+        try {
+            const res = await postData('ride/update-status', {
+                driverId: user.id,
+                rideId: rideData.id,
+                status,
+                stopIndex,
+            });
+            if (res?.success) {
+                setStops(res.stops);
+            } else {
+                setModalMessage(res?.error || 'Failed to update stop');
+                setModalVisible(true);
+            }
+        } finally {
+            setUpdatingStop(false);
         }
     };
 
@@ -460,6 +504,15 @@ const RideTrackingScreen = ({ route, navigation }) => {
                 )}
 
                 <Marker coordinate={{ latitude: pickupLat, longitude: pickupLng }} title="Pickup" />
+                {stops.map((stop, index) => (
+                    <Marker
+                        key={`stop-${index}`}
+                        coordinate={{ latitude: parseCoordinate(stop.lat), longitude: parseCoordinate(stop.lng) }}
+                        pinColor="orange"
+                        title={`Stop ${index + 1}`}
+                        description={stop.address}
+                    />
+                ))}
                 <Marker coordinate={{ latitude: dropoffLat, longitude: dropoffLng }} pinColor="green" title="Drop-off" />
 
                 {driverLocation?.latitude && (
@@ -489,7 +542,7 @@ const RideTrackingScreen = ({ route, navigation }) => {
                         {(rideStatus?.status === 'started' || rideData.status === 'started') && (
                             <MapViewDirections
                                 origin={driverLocation}
-                                destination={{ latitude: dropoffLat, longitude: dropoffLng }}
+                                destination={{ latitude: nextTarget.latitude, longitude: nextTarget.longitude }}
                                 apikey={GOOGLE_MAPS_API_KEY}
                                 strokeWidth={4}
                                 strokeColor="#000"
@@ -564,6 +617,12 @@ const RideTrackingScreen = ({ route, navigation }) => {
                             <Text style={styles.label}>📍 Pickup: </Text>
                             <Text style={styles.value}>{rideData.pickup_address}</Text>
                         </View>
+                        {stops.map((stop, index) => (
+                            <View style={styles.infoRow} key={`stop-${index}`}>
+                                <Text style={styles.label}>🔸 Stop {index + 1}: </Text>
+                                <Text style={styles.value}>{stop.address}</Text>
+                            </View>
+                        ))}
                         <View style={styles.infoRow}>
                             <Text style={styles.label}>🏁 Drop: </Text>
                             <Text style={styles.value}>{rideData.dropoff_address}</Text>
@@ -633,6 +692,20 @@ const RideTrackingScreen = ({ route, navigation }) => {
                             </View>
                         )}
 
+                        {stops.length > 0 && (
+                            <View style={styles.nextStopCard}>
+                                <Text style={styles.nextStopLabel}>
+                                    {nextStop
+                                        ? `NEXT: ${nextTarget.label.toUpperCase()} OF ${stops.length}`
+                                        : 'ALL STOPS DONE • NEXT: DROP-OFF'}
+                                </Text>
+                                <Text style={styles.nextStopAddress} numberOfLines={2}>{nextTarget.address}</Text>
+                                {nextStop?.status === 'arrived' && (
+                                    <Text style={styles.nextStopWaiting}>Waiting at stop for passenger</Text>
+                                )}
+                            </View>
+                        )}
+
                         <View style={styles.simpleButtonContainer}>
                             <TouchableOpacity
                                 onPress={handleOpenMaps}
@@ -640,16 +713,44 @@ const RideTrackingScreen = ({ route, navigation }) => {
                                 disabled={isOpeningMaps}
                             >
                                 <Icon name="navigation" size={20} color="#FFFFFF" />
-                                <Text style={styles.simpleMapButtonText}>Navigate to Drop-off</Text>
+                                <Text style={styles.simpleMapButtonText}>Navigate to {nextTarget.label}</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                onPress={() => ChangeRideStatus('rideend')}
-                                style={styles.finishButton}
-                            >
-                                <Icon name="check-circle" size={20} color="#FFFFFF" />
-                                <Text style={styles.finishButtonText}>Finish Ride</Text>
-                            </TouchableOpacity>
+                            {nextStop?.status === 'pending' && (
+                                <TouchableOpacity
+                                    onPress={() => updateStopStatus('stop_arrived', nextStopIndex)}
+                                    style={[styles.stopButton, updatingStop && styles.buttonDisabled]}
+                                    disabled={updatingStop}
+                                >
+                                    <Icon name="place" size={20} color="#FFFFFF" />
+                                    <Text style={styles.finishButtonText}>Arrived at Stop {nextStopIndex + 1}</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {nextStop?.status === 'arrived' && (
+                                <TouchableOpacity
+                                    onPress={() => updateStopStatus('stop_completed', nextStopIndex)}
+                                    style={[styles.stopButton, updatingStop && styles.buttonDisabled]}
+                                    disabled={updatingStop}
+                                >
+                                    <Icon name="arrow-forward" size={20} color="#FFFFFF" />
+                                    <Text style={styles.finishButtonText}>
+                                        {nextStopIndex + 1 < stops.length
+                                            ? `Continue to Stop ${nextStopIndex + 2}`
+                                            : 'Continue to Drop-off'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {!nextStop && (
+                                <TouchableOpacity
+                                    onPress={() => ChangeRideStatus('rideend')}
+                                    style={styles.finishButton}
+                                >
+                                    <Icon name="check-circle" size={20} color="#FFFFFF" />
+                                    <Text style={styles.finishButtonText}>Finish Ride</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
 
 
@@ -1005,6 +1106,45 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 5,
+    },
+    stopButton: {
+        backgroundColor: '#f59e0b',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    nextStopCard: {
+        backgroundColor: '#FFF8E1',
+        borderLeftWidth: 4,
+        borderLeftColor: '#f59e0b',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+    },
+    nextStopLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#b45309',
+        letterSpacing: 0.5,
+    },
+    nextStopAddress: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111',
+        marginTop: 4,
+    },
+    nextStopWaiting: {
+        fontSize: 12,
+        color: '#b45309',
+        marginTop: 4,
     },
     finishButtonText: {
         color: '#fff',
