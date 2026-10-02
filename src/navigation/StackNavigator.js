@@ -17,6 +17,7 @@ import InvoiceScreen from '../screens/mainscreens/InvoiceScreen';
 import HistoryScreen from '../screens/mainscreens/HistoryScreen';
 import HistoryScreenWithBack from '../screens/mainscreens/HistoryScreenWithBack';
 import CmsScreen from '../screens/mainscreens/CmsScreen';
+import NotificationScreen from '../screens/mainscreens/NotificationScreen';
 
 
 
@@ -34,6 +35,7 @@ const StackNavigator = () => {
         <Stack.Screen name="InvoiceScreen" component={InvoiceScreen} options={{ headerShown: false }} />
         <Stack.Screen name="HistoryScreenWithBack" component={HistoryScreenWithBack} options={{ headerShown: false }} />
         <Stack.Screen name="CmsScreen" component={CmsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
       
       </Stack.Navigator>
   );
