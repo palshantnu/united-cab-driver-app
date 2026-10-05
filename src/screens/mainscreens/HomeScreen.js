@@ -433,8 +433,14 @@ const HomeScreen = ({ navigation }) => {
                             latitude: userLocation.latitude,
                             longitude: userLocation.longitude,
                         }}
-                        image={require('../../assets/8221274.png')} // ✅ your image path
-                    />
+                        anchor={{ x: 0.5, y: 0.5 }}
+                    >
+                        <Image
+                            source={require('../../assets/8221274.png')}
+                            style={{ width: 36, height: 36 }}
+                            resizeMode="contain"
+                        />
+                    </Marker>
                 </MapView>
             }
             {/* <Image

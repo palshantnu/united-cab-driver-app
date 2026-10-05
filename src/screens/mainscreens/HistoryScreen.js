@@ -38,8 +38,12 @@ const HistoryScreen = ({ navigation }) => {
         try {
             const body = { driver_id: user.id };
             const res = await postData('rides/driver/history', body);
-
+console.log('History Response:', res);
             if (res?.bookings?.length > 0) {
+                // Latest booking on top (newest booking time first, id as tie-breaker)
+                res.bookings.sort((a, b) =>
+                    (new Date(b.created_at) - new Date(a.created_at)) || (b.id - a.id)
+                );
                 setBookingsList(res.bookings);
                 
                 // Separate instant and scheduled bookings

@@ -61,9 +61,6 @@
       android:value="AIzaSyAvSirrQQWowYpUpem3I7FaeFZTsfWbDLQ" />
 
     <!-- For Android 12+ to show notifications properly -->
-    <receiver
-      android:name="com.google.android.gms.location.LocationRequest"
-      android:exported="false" />
 
     <service
       android:name="com.united_cab_merthyr_driver.LocationService"
