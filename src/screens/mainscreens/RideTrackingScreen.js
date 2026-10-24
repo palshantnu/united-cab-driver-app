@@ -376,9 +376,15 @@ const RideTrackingScreen = ({ route, navigation }) => {
             }
         };
 
+        // Rooms are lost on every reconnect, so rejoin each time the socket connects
+        const rejoinRideRoom = () => {
+            socket.emit('joinRideRoom', { rideId, userType: 2, userId: user.id });
+        };
+        socket.on('connect', rejoinRideRoom);
         socket.on('rideStatusUpdate', handleRideStatusUpdate);
 
         return () => {
+            socket.off('connect', rejoinRideRoom);
             socket.off('rideStatusUpdate', handleRideStatusUpdate);
         };
     }, [rideData]);

@@ -6,7 +6,8 @@ const Socket = io(SOCKET_URL, {
   transports: ['websocket'],
   reconnection: true,
   reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 2000,
   timeout: 10000,
   autoConnect: true,   // ✅ IMPORTANT
 });

@@ -148,13 +148,18 @@ const HomeScreen = ({ navigation }) => {
         socket.on('newRideRequest', handleNewRideRequest);
 
         // Register user to receive live updates
-        if (driverStatus === 1) {
+        // Rooms are lost on every reconnect, so register again each time the socket connects
+        const registerDriver = () => {
             socket.emit('registerDriver', {
                 driverId,
                 latitude: userLocation.latitude,
                 longitude: userLocation.longitude,
                 vehicleTypeId: user.vehicle_id,
             });
+        };
+        socket.on('connect', registerDriver);
+        if (socket.connected) {
+            registerDriver();
         }
 
 
@@ -187,6 +192,7 @@ const HomeScreen = ({ navigation }) => {
 
         return () => {
             // Keep the socket alive; explicit disconnect can mark the driver offline on the server.
+            socket.off('connect', registerDriver);
             socket.off('liveDriverUpdates', handleLiveDriverUpdates);
             socket.off('rideStatusUpdate', handleRideStatus);
             socket.off('newRideRequest', handleNewRideRequest);
