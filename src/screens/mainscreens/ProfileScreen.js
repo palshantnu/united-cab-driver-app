@@ -40,7 +40,11 @@ const ProfileScreen = () => {
     console.log(profile);
     const [imageUri, setImageUri] = useState(profile.profile_image);
     const getVehicalType = async () => {
-        const res = await getData('vehicle-types');
+        // for=driver: one vehicle per capacity, independent of day/night/holiday plans;
+        // vehicle_id keeps the driver's saved vehicle in the list
+        const currentVehicleId = userdetails?.vehicle_id || user?.vehicle_id;
+        const res = await getData(`vehicle-types?for=driver${currentVehicleId ? `&vehicle_id=${currentVehicleId}` : ''}`);
+        if (!res?.vehicle_types) return;
         const formattedData = res.vehicle_types.map(item => ({
             label: item.type_name,
             value: item.id.toString(), // Use string if DropDownPicker expects string
@@ -49,6 +53,7 @@ const ProfileScreen = () => {
             type: 'SET_VEHICALTYPE',
             payload: formattedData,
         });
+        setVehicleTypes(formattedData);
 
     }
     const getProfile = async () => {
@@ -115,9 +120,12 @@ const ProfileScreen = () => {
         });
     };
     useEffect(() => {
-        getVehicalType();
         getProfile();
     }, [])
+
+    useEffect(() => {
+        getVehicalType();
+    }, [userdetails?.vehicle_id])
 
 
     // Simulated API response (you should replace with real API call)

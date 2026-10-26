@@ -60,8 +60,10 @@ const SignUpScreen = ({ navigation }) => {
     };
 
     const getVehicalType = async () => {
-        const res = await getData('vehicle-types');
+        // for=driver: one vehicle per capacity, independent of day/night/holiday plans
+        const res = await getData('vehicle-types?for=driver');
         console.log('formattedData', res);
+        if (!res?.vehicle_types) return;
 
         const formattedData = res.vehicle_types.map(item => ({
             label: item.type_name,
